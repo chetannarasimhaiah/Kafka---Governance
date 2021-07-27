@@ -55,3 +55,45 @@ Increase fetch.min.bytes, this parameter sets the minimum number of bytes expect
 
 Use Consumer groups with multiple consumers to parallelize consumption. Parallelizing consumption may improve throughput because multiple consumers can balance the load, processing multiple partitions simultaneously. The upper limit on this parallelization is the number of partitions in the topic.
 
+
+
+
+Best Practices for Low Latency: 
+
+Producer : 
+
+ Trade off for number of partitions. An increased number of partitions may increase throughput. However, there is a tradeoff in that an increased number of partitions may also increase latency. A broker by default uses a single thread to replicate data from another broker, so it may take longer to replicate a lot of partitions shared between each pair of brokers and consequently take longer for messages to be considered committed. No message can be consumed until it is committed, so this can ultimately increase end-toend latency.
+ 
+By default, the producer is tuned for low latency and the configuration parameter linger.ms is set to 0, which means the producer will send as soon as it has data to send.
+Disabling compression typically spares the CPU cycles but increases network bandwidth utilization, compression.type=none to spare the CPU cycles.
+
+Acks configuration parameter. By default, acks=1, which means the leader broker will respond sooner to the producer before all replicas have received the message. Depending on your application requirements, you can even set acks=0 so that the producer will not wait for a response for a producer request from the broker, but then messages can potentially be lost without the producer even knowing.
+
+Consumer :
+
+ Two configuration parameters together lets you reason through the size of fetch request, i.e., fetch.min.bytes, or the age of a fetch request, i.e., fetch.max.wait.ms
+ 
+ 
+Best Practices for High Durability :
+
+Producer : 
+
+Acks is primarily used in the context of durability. To optimize for high durability, we recommend setting it to acks=all (equivalent to acks=-1), which means the leader will wait for the full set of in-sync replicas to acknowledge the message and to consider it committed. This provides the strongest available guarantees that the record will not be lost as long as at least one in-sync replica remains alive.
+
+Try to resend messages if any sends fail to ensure that data is not lost. The producer automatically tries to resend messages up to the number of times specified by the configuration parameter retries (default MAX_INT) and up to the time duration specified by the configuration parameter delivery.timeout.ms (default 120000).
+
+There are two things to take into consideration with these automatic producer retries: duplication and message ordering.
+
+1. Duplication: If there are transient failures in the cluster that cause a producer retry, the producer may send duplicate messages to the broker
+2. Ordering: Multiple send attempts may be “in flight” at the same time, and a retry of a previously failed message send may occur after a newer message send succeeded.
+
+Exactly-once semantics - There are two ways to handle this :
+
+             To address both of these, we generally recommend that you configure the producer for idempotency, i.e., enable.idempotence=true, for which brokers track messages using incrementing sequence numbers,  Idempotent producers can handle duplicate messages and preserve message order even with request pipeline there is no message duplication because the broker ignores duplicate sequence numbers, and message ordering is preserved because when there are failures, the producer temporarily constrains to a single message in flight until sequencing is restored. In case the idempotence guarantees can’t be satisfied, the producer will raise a fatal error and reject any further sends, so when configuring the producer for idempotency, the application developer needs to catch the fatal error and handle it appropriately. And with retires > 1.
+
+                                    OR
+
+To handle possible message duplication if there are transient failures in the cluster, be sure to build your consumer application logic to process duplicate messages. To preserve message order while also allowing resending failed messages, set the configuration parameter max.in.flight.requests.per.connection=1 to ensure that only one request can be sent to the broker at a time. To preserve message order while allowing request pipelining, set the configuration parameter retries=0 if the application is able to tolerate some message loss.
+
+3.  When a producer sets acks=all (or acks=-1), then the configuration parameter min.insync.replicas specifies the minimum threshold for the replica count in the ISR list. If this minimum count cannot be met, then the producer will raise an exception. When used together, min.insync.replicas and acks allow you to enforce greater durability guarantees.
+
