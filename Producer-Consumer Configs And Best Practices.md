@@ -36,8 +36,8 @@ To optimize for high availability, you should tune Kafka to recover as quickly a
 #### Producer : 
 
   Batching of messages. Increase Batch size and batching time. Larger batches requires lesser calls to brokers. Reduces CPU overhead.
-      **Batch.size**
-      **Linger.ms**
+      1. **Batch.size**
+      2. **Linger.ms**
       
   Messages to different partitions can be sent in parallel by producers, written in parallel by different brokers, and read in parallel by different consumers. higher number of topic partitions results in higher throughput.
   
