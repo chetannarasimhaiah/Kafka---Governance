@@ -114,8 +114,9 @@ Consumer :
 The consumer liveness is maintained with a heartbeat and the timeout used to detect failed heartbeats is dictated by the configuration parameter session.timeout.ms. The lower the session timeout is set,the faster a failed consumer will be detected, which will decrease time to recovery in the case of a failure. 
 
 
-Optimization Criteria
-![image](https://user-images.githubusercontent.com/61533898/127115061-1cdc80df-45fe-4c96-b21b-9f227668933d.png)
+	
+![image](https://user-images.githubusercontent.com/61533898/127115187-48456b66-239c-4bc7-a2b1-8b4cbe0ccab1.png)
+
 
 
 
