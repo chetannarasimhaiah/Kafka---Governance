@@ -25,3 +25,28 @@ Durability is all about reducing the chance for a message to get lost. The most 
 
 High availability :
 To optimize for high availability, you should tune Kafka to recover as quickly as possible from failure scenarios. which minimizes downtime in case of unexpected failures? Kafka is a distributed system, and it is designed to tolerate failures. In use cases demanding high availability, it’s important to configure Kafka such that it will recover from failures as quickly as possible.
+
+
+Configuration details for goals :
+
+
+Best Practices for High Throughput :
+
+
+Producer : 
+
+  Batching of messages. Increase Batch size and batching time. Larger batches requires lesser calls to brokers. Reduces CPU overhead.
+      Batch.size
+      Linger.ms
+  Messages to different partitions can be sent in parallel by producers, written in parallel by different brokers, and read in parallel by different consumers. higher number of topic partitions results in higher throughput.
+  Enable compression.
+      compression.type For performance, we generally recommend lz4 and avoid gzip because it can be a CPU hog.
+  Setting acks=1 makes the leader broker write the record to its local log and then acknowledge the request without awaiting acknowledgment from all followers.
+  If number of partitions is higher, fine tune buffer.memory. If that memory limit is reached, then the producer will block on additional sends until memory frees up or until max.block.ms time passes.
+  
+  
+Consumer :
+
+Increase fetch.min.bytes, this parameter sets the minimum number of bytes expected for a fetch response from a consumer.  Increasing this will also reduce the number of fetch requests made to the broker, reducing the broker CPU overhead to  process each fetch, thereby also improving throughput.
+Use Consumer groups with multiple consumers to parallelize consumption. Parallelizing consumption may improve throughput because multiple consumers can balance the load, processing multiple partitions simultaneously. The upper limit on this parallelization is the number of partitions in the topic.
+
