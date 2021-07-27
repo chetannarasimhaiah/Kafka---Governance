@@ -91,9 +91,29 @@ Exactly-once semantics - There are two ways to handle this :
 
 To address both of these, we generally recommend that you configure the producer for idempotency, i.e., enable.idempotence=true, for which brokers track messages using incrementing sequence numbers,  Idempotent producers can handle duplicate messages and preserve message order even with request pipeline there is no message duplication because the broker ignores duplicate sequence numbers, and message ordering is preserved because when there are failures, the producer temporarily constrains to a single message in flight until sequencing is restored. In case the idempotence guarantees can’t be satisfied, the producer will raise a fatal error and reject any further sends, so when configuring the producer for idempotency, the application developer needs to catch the fatal error and handle it appropriately. And with retires > 1.
 
-                                    OR
 
 To handle possible message duplication if there are transient failures in the cluster, be sure to build your consumer application logic to process duplicate messages. To preserve message order while also allowing resending failed messages, set the configuration parameter max.in.flight.requests.per.connection=1 to ensure that only one request can be sent to the broker at a time. To preserve message order while allowing request pipelining, set the configuration parameter retries=0 if the application is able to tolerate some message loss.
 
 3.  When a producer sets acks=all (or acks=-1), then the configuration parameter min.insync.replicas specifies the minimum threshold for the replica count in the ISR list. If this minimum count cannot be met, then the producer will raise an exception. When used together, min.insync.replicas and acks allow you to enforce greater durability guarantees.
+
+
+Consumers :
+
+Disable the automatic commit by setting enable.auto.commit=false. So, the offsets to be committed only after the consumer finishes completely processing the messages.
+By setting isolation.level=read_committed, consumers will receive only non-transactional messages or committed transactional messages, and they will not receive messages from open or aborted transactions.
+
+
+Best Practices for High Availability :
+
+Producer :
+
+Nill
+
+Consumer :
+
+The consumer liveness is maintained with a heartbeat and the timeout used to detect failed heartbeats is dictated by the configuration parameter session.timeout.ms. The lower the session timeout is set,the faster a failed consumer will be detected, which will decrease time to recovery in the case of a failure. 
+
+
+
+
 
