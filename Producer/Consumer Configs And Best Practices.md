@@ -3,7 +3,7 @@
 Kafka is well known for its resiliency, fault-tolerance, and high throughput. But its performance doesn’t always meet everyone’s expectations. In some cases, we can improve it by scaling out or scaling up brokers. While in most cases, we have to play the game of configurations. This document is to come up with some of the best practices and setting of various important configurations on producer or consumer kafka client side. This will help application teams to fine tune their application to perform better and also utilize kafka resources better. Majority of configurations are already pre-defined in a way that they work well for most situations.
 
 
-We’ll consider four goals which often involve tradeoffs with one another: Throughput, Latency, Durability, and Availability. We have to force teams to discuss the original business use cases and what the main goals are. There are two reasons this discussion is important.
+We’ll consider four goals which often involve tradeoffs with one another: **Throughput, Latency, Durability, and Availability** . We have to force teams to discuss the original business use cases and what the main goals are. There are two reasons this discussion is important.
 
 The first reason is that you can’t maximize all goals at the same time. There are occasionally tradeoffs between throughput, latency, durability, and availability. This does not mean that optimizing one of these goals results in completely losing out on the others. It just means that they are all interconnected, and thus you can’t maximize all of them at the same time.
 
@@ -36,22 +36,22 @@ To optimize for high availability, you should tune Kafka to recover as quickly a
 #### Producer : 
 
   Batching of messages. Increase Batch size and batching time. Larger batches requires lesser calls to brokers. Reduces CPU overhead.
-      Batch.size
-      Linger.ms
+      **Batch.size**
+      **Linger.ms**
       
   Messages to different partitions can be sent in parallel by producers, written in parallel by different brokers, and read in parallel by different consumers. higher number of topic partitions results in higher throughput.
   
   Enable compression.
-      compression.type For performance, we generally recommend lz4 and avoid gzip because it can be a CPU hog.
+      **compression.type** For performance, we generally recommend lz4 and avoid gzip because it can be a CPU hog.
       
-  Setting acks=1 makes the leader broker write the record to its local log and then acknowledge the request without awaiting acknowledgment from all followers.
+  Setting **acks=1** makes the leader broker write the record to its local log and then acknowledge the request without awaiting acknowledgment from all followers.
   
-  If number of partitions is higher, fine tune buffer.memory. If that memory limit is reached, then the producer will block on additional sends until memory frees up or until max.block.ms time passes.
+  If number of partitions is higher, fine tune **buffer.memory**. If that memory limit is reached, then the producer will block on additional sends until memory frees up or until **max.block.ms** time passes.
   
   
 #### Consumer :
 
-Increase fetch.min.bytes, this parameter sets the minimum number of bytes expected for a fetch response from a consumer.  Increasing this will also reduce the number of fetch requests made to the broker, reducing the broker CPU overhead to  process each fetch, thereby also improving throughput.
+Increase **fetch.min.bytes**, this parameter sets the minimum number of bytes expected for a fetch response from a consumer.  Increasing this will also reduce the number of fetch requests made to the broker, reducing the broker CPU overhead to  process each fetch, thereby also improving throughput.
 
 Use Consumer groups with multiple consumers to parallelize consumption. Parallelizing consumption may improve throughput because multiple consumers can balance the load, processing multiple partitions simultaneously. The upper limit on this parallelization is the number of partitions in the topic.
 
@@ -64,14 +64,14 @@ Use Consumer groups with multiple consumers to parallelize consumption. Parallel
 
  Trade off for number of partitions. An increased number of partitions may increase throughput. However, there is a tradeoff in that an increased number of partitions may also increase latency. A broker by default uses a single thread to replicate data from another broker, so it may take longer to replicate a lot of partitions shared between each pair of brokers and consequently take longer for messages to be considered committed. No message can be consumed until it is committed, so this can ultimately increase end-toend latency.
  
-By default, the producer is tuned for low latency and the configuration parameter linger.ms is set to 0, which means the producer will send as soon as it has data to send.
+By default, the producer is tuned for low latency and the configuration parameter **linger.ms** is set to 0, which means the producer will send as soon as it has data to send.
 Disabling compression typically spares the CPU cycles but increases network bandwidth utilization, compression.type=none to spare the CPU cycles.
 
-Acks configuration parameter. By default, acks=1, which means the leader broker will respond sooner to the producer before all replicas have received the message. Depending on your application requirements, you can even set acks=0 so that the producer will not wait for a response for a producer request from the broker, but then messages can potentially be lost without the producer even knowing.
+Acks configuration parameter. By default, **acks=1**, which means the leader broker will respond sooner to the producer before all replicas have received the message. Depending on your application requirements, you can even set acks=0 so that the producer will not wait for a response for a producer request from the broker, but then messages can potentially be lost without the producer even knowing.
 
 #### Consumer :
 
- Two configuration parameters together lets you reason through the size of fetch request, i.e., fetch.min.bytes, or the age of a fetch request, i.e., fetch.max.wait.ms
+ Two configuration parameters together lets you reason through the size of fetch request, i.e., **fetch.min.bytes**, or the age of a fetch request, i.e., **fetch.max.wait.ms**
  
 #### Effect of batching against Throughput and Latency :
 
@@ -88,17 +88,17 @@ Try to resend messages if any sends fail to ensure that data is not lost. The pr
 
 There are two things to take into consideration with these automatic producer retries: duplication and message ordering.
 
-1. Duplication: If there are transient failures in the cluster that cause a producer retry, the producer may send duplicate messages to the broker
-2. Ordering: Multiple send attempts may be “in flight” at the same time, and a retry of a previously failed message send may occur after a newer message send succeeded.
+1. **Duplication**: If there are transient failures in the cluster that cause a producer retry, the producer may send duplicate messages to the broker
+2. **Ordering**: Multiple send attempts may be “in flight” at the same time, and a retry of a previously failed message send may occur after a newer message send succeeded.
 
-Exactly-once semantics - There are two ways to handle this :
+**Exactly-once semantics** - There are two ways to handle this :
 
-To address both of these, we generally recommend that you configure the producer for idempotency, i.e., enable.idempotence=true, for which brokers track messages using incrementing sequence numbers,  Idempotent producers can handle duplicate messages and preserve message order even with request pipeline there is no message duplication because the broker ignores duplicate sequence numbers, and message ordering is preserved because when there are failures, the producer temporarily constrains to a single message in flight until sequencing is restored. In case the idempotence guarantees can’t be satisfied, the producer will raise a fatal error and reject any further sends, so when configuring the producer for idempotency, the application developer needs to catch the fatal error and handle it appropriately. And with retires > 1.
+To address both of these, we generally recommend that you configure the producer for idempotency, i.e., **enable.idempotence=tru**e, for which brokers track messages using incrementing sequence numbers,  Idempotent producers can handle duplicate messages and preserve message order even with request pipeline there is no message duplication because the broker ignores duplicate sequence numbers, and message ordering is preserved because when there are failures, the producer temporarily constrains to a single message in flight until sequencing is restored. In case the idempotence guarantees can’t be satisfied, the producer will raise a fatal error and reject any further sends, so when configuring the producer for idempotency, the application developer needs to catch the fatal error and handle it appropriately. And with **retires > 1**.
 
 
-To handle possible message duplication if there are transient failures in the cluster, be sure to build your consumer application logic to process duplicate messages. To preserve message order while also allowing resending failed messages, set the configuration parameter max.in.flight.requests.per.connection=1 to ensure that only one request can be sent to the broker at a time. To preserve message order while allowing request pipelining, set the configuration parameter retries=0 if the application is able to tolerate some message loss.
+To handle possible message duplication if there are transient failures in the cluster, be sure to build your consumer application logic to process duplicate messages. To preserve message order while also allowing resending failed messages, set the configuration parameter **max.in.flight.requests.per.connection=1** to ensure that only one request can be sent to the broker at a time. To preserve message order while allowing request pipelining, set the configuration parameter retries=0 if the application is able to tolerate some message loss.
 
-3.  When a producer sets acks=all (or acks=-1), then the configuration parameter min.insync.replicas specifies the minimum threshold for the replica count in the ISR list. If this minimum count cannot be met, then the producer will raise an exception. When used together, min.insync.replicas and acks allow you to enforce greater durability guarantees.
+3.  When a producer sets **acks=all (or acks=-1)**, then the configuration parameter min.insync.replicas specifies the minimum threshold for the replica count in the ISR list. If this minimum count cannot be met, then the producer will raise an exception. When used together, min.insync.replicas and acks allow you to enforce greater durability guarantees.
 
 ##### Difference between ack =1 and ack = all : 
 
@@ -120,7 +120,7 @@ To handle possible message duplication if there are transient failures in the cl
 #### Consumers :
 
 Disable the automatic commit by setting enable.auto.commit=false. So, the offsets to be committed only after the consumer finishes completely processing the messages.
-By setting isolation.level=read_committed, consumers will receive only non-transactional messages or committed transactional messages, and they will not receive messages from open or aborted transactions.
+By setting **isolation.level=read_committed**, consumers will receive only non-transactional messages or committed transactional messages, and they will not receive messages from open or aborted transactions.
 
 
 
@@ -133,7 +133,7 @@ Nill
 
 #### Consumer :
 
-The consumer liveness is maintained with a heartbeat and the timeout used to detect failed heartbeats is dictated by the configuration parameter session.timeout.ms. The lower the session timeout is set,the faster a failed consumer will be detected, which will decrease time to recovery in the case of a failure. 
+The consumer liveness is maintained with a heartbeat and the timeout used to detect failed heartbeats is dictated by the configuration parameter **session.timeout.ms**. The lower the session timeout is set,the faster a failed consumer will be detected, which will decrease time to recovery in the case of a failure. 
 
 ## Configuration Dashboard :
 
