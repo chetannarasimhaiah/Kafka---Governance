@@ -1,4 +1,4 @@
-Overview :
+## Overview :
 
 Kafka is well known for its resiliency, fault-tolerance, and high throughput. But its performance doesn’t always meet everyone’s expectations. In some cases, we can improve it by scaling out or scaling up brokers. While in most cases, we have to play the game of configurations. This document is to come up with some of the best practices and setting of various important configurations on producer or consumer kafka client side. This will help application teams to fine tune their application to perform better and also utilize kafka resources better. Majority of configurations are already pre-defined in a way that they work well for most situations.
 
@@ -9,31 +9,31 @@ The first reason is that you can’t maximize all goals at the same time. There 
 
 The second reason it is important to identify which service goal you want to optimize is that you can and should tune Kafka configuration parameters to achieve it.
 
-Goals : 
+## Goals : 
 
 
 There are mainly four goals or criteria we are going to consider. 
 
-High Throughput :
+### High Throughput :
 Which is the rate that data is moved from producers to brokers or brokers to consumers? Some use cases have millions of writes per second. Because of Kafka’s design, writing large volumes of data into it is not a hard thing to do.
 
-Low latency : 
+### Low latency : 
 Which is the elapsed time moving messages end to end (from producers to brokers to consumers)? One example of a low-latency use case is a chat application, where the recipient of a message needs to get the message with as little latency as possible.
 
-High durability :
+### High durability :
 Durability is all about reducing the chance for a message to get lost. The most important feature that enables durability is replication, which ensures that messages are copied to multiple brokers. which guarantees that messages that have been committed will not be lost? One example use case for high durability is an event streaming microservices pipeline using Kafka as the event store. Another is for integration between an event streaming source and some permanent storage (e.g., AWS S3) for mission-critical business content.
 
-High availability :
+### High availability :
 To optimize for high availability, you should tune Kafka to recover as quickly as possible from failure scenarios. which minimizes downtime in case of unexpected failures? Kafka is a distributed system, and it is designed to tolerate failures. In use cases demanding high availability, it’s important to configure Kafka such that it will recover from failures as quickly as possible.
 
 
-Configuration details for goals :
+## Configuration details for goals :
 
 
-Best Practices for High Throughput :
+### Best Practices for High Throughput :
 
 
-Producer : 
+#### Producer : 
 
   Batching of messages. Increase Batch size and batching time. Larger batches requires lesser calls to brokers. Reduces CPU overhead.
       Batch.size
@@ -49,7 +49,7 @@ Producer :
   If number of partitions is higher, fine tune buffer.memory. If that memory limit is reached, then the producer will block on additional sends until memory frees up or until max.block.ms time passes.
   
   
-Consumer :
+#### Consumer :
 
 Increase fetch.min.bytes, this parameter sets the minimum number of bytes expected for a fetch response from a consumer.  Increasing this will also reduce the number of fetch requests made to the broker, reducing the broker CPU overhead to  process each fetch, thereby also improving throughput.
 
@@ -58,9 +58,9 @@ Use Consumer groups with multiple consumers to parallelize consumption. Parallel
 
 
 
-Best Practices for Low Latency: 
+### Best Practices for Low Latency: 
 
-Producer : 
+#### Producer : 
 
  Trade off for number of partitions. An increased number of partitions may increase throughput. However, there is a tradeoff in that an increased number of partitions may also increase latency. A broker by default uses a single thread to replicate data from another broker, so it may take longer to replicate a lot of partitions shared between each pair of brokers and consequently take longer for messages to be considered committed. No message can be consumed until it is committed, so this can ultimately increase end-toend latency.
  
@@ -69,14 +69,18 @@ Disabling compression typically spares the CPU cycles but increases network band
 
 Acks configuration parameter. By default, acks=1, which means the leader broker will respond sooner to the producer before all replicas have received the message. Depending on your application requirements, you can even set acks=0 so that the producer will not wait for a response for a producer request from the broker, but then messages can potentially be lost without the producer even knowing.
 
-Consumer :
+#### Consumer :
 
  Two configuration parameters together lets you reason through the size of fetch request, i.e., fetch.min.bytes, or the age of a fetch request, i.e., fetch.max.wait.ms
  
- 
-Best Practices for High Durability :
+#### Effect of batching against Throughput and Latency :
 
-Producer : 
+![image](https://user-images.githubusercontent.com/61533898/127122236-143f368a-941b-46b1-a32f-480d87aea08e.png)
+
+
+### Best Practices for High Durability :
+
+#### Producer : 
 
 Acks is primarily used in the context of durability. To optimize for high durability, we recommend setting it to acks=all (equivalent to acks=-1), which means the leader will wait for the full set of in-sync replicas to acknowledge the message and to consider it committed. This provides the strongest available guarantees that the record will not be lost as long as at least one in-sync replica remains alive.
 
@@ -96,34 +100,68 @@ To handle possible message duplication if there are transient failures in the cl
 
 3.  When a producer sets acks=all (or acks=-1), then the configuration parameter min.insync.replicas specifies the minimum threshold for the replica count in the ISR list. If this minimum count cannot be met, then the producer will raise an exception. When used together, min.insync.replicas and acks allow you to enforce greater durability guarantees.
 
+##### Difference between ack =1 and ack = all : 
 
-Consumers :
+![image](https://user-images.githubusercontent.com/61533898/127122435-7f1d6d16-214f-4d00-ae24-45570cbb6157.png)
+
+##### Difference between min.insync.replicas :
+
+![image](https://user-images.githubusercontent.com/61533898/127122551-621481f4-7ed0-4b19-9058-265dbcecfb4d.png)
+
+##### Difference between reties = 0 and retries > 0 :
+
+![image](https://user-images.githubusercontent.com/61533898/127123184-68a87b35-a527-4cf5-8d8e-41bb0a042cda.png)
+
+##### Difference between disabling idempotent and enabling idempotent :
+
+![image](https://user-images.githubusercontent.com/61533898/127123273-3552a656-11ad-4692-9fc8-589e6b2535a8.png)
+
+
+#### Consumers :
 
 Disable the automatic commit by setting enable.auto.commit=false. So, the offsets to be committed only after the consumer finishes completely processing the messages.
 By setting isolation.level=read_committed, consumers will receive only non-transactional messages or committed transactional messages, and they will not receive messages from open or aborted transactions.
 
 
-Best Practices for High Availability :
 
-Producer :
+
+### Best Practices for High Availability :
+
+#### Producer :
 
 Nill
 
-Consumer :
+#### Consumer :
 
 The consumer liveness is maintained with a heartbeat and the timeout used to detect failed heartbeats is dictated by the configuration parameter session.timeout.ms. The lower the session timeout is set,the faster a failed consumer will be detected, which will decrease time to recovery in the case of a failure. 
 
-Configuration Dashboard :
+## Configuration Dashboard :
 
-Producer Configs :
+### Producer Configs :
 	
 ![image](https://user-images.githubusercontent.com/61533898/127115187-48456b66-239c-4bc7-a2b1-8b4cbe0ccab1.png)
 
 
-Consumer Configs :
+### Consumer Configs :
 
 ![image](https://user-images.githubusercontent.com/61533898/127115484-434bf496-5efb-4665-9996-1df2227e9e9d.png)
 
+
+###### More Reading :
+
+https://docs.confluent.io/cloud/current/client-apps/optimizing/index.html
+
+http://kafka.apache.org/documentation/#producerconfigs
+
+http://kafka.apache.org/documentation/#consumerconfigs
+
+https://docs.confluent.io/platform/current/installation/configuration/producer-configs.html
+
+https://towardsdatascience.com/10-configs-to-make-your-kafka-producer-more-resilient-ec6903c63e3f#:~:text=The%20configs%20that%20will%20be,idempotent%20%2C%20max.
+
+https://strimzi.io/blog/2020/10/15/producer-tuning/
+
+https://developers.redhat.com/articles/2021/07/19/benchmarking-kafka-producer-throughput-quarkus#conclusion
 
 
 
