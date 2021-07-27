@@ -10,6 +10,8 @@ The first reason is that you can’t maximize all goals at the same time. There 
 The second reason it is important to identify which service goal you want to optimize is that you can and should tune Kafka configuration parameters to achieve it.
 
 Goals : 
+
+
 There are mainly four goals or criteria we are going to consider. 
 
 High Throughput :
