@@ -114,6 +114,17 @@ Consumer :
 The consumer liveness is maintained with a heartbeat and the timeout used to detect failed heartbeats is dictated by the configuration parameter session.timeout.ms. The lower the session timeout is set,the faster a failed consumer will be detected, which will decrease time to recovery in the case of a failure. 
 
 
+Optimization Criteria	Throughput	Latency	Durability	Availability
+1			replication.factor=3 (topic override available)	
+2	acks=1 (default 1)	acks=1 (default 1)	acks=all (default 1)	
+3			enable.idempotence=true (default false), to handle message duplication and ordering	
+4			max.in.flight.requests.per.connection=1 (default 5), to prevent out of order messages	
+			when not using an idempotent producer	
+5	compression.type=lz4 (default none, i.e., no compression)	compression.type=none (default none, i.e., no compression)		
+6	linger.ms : increase to 10 – 100 (default 0)	linger.ms=0 (default 0)		
+7	batch.size: increase to 100000 – 200000 (default 16384)			
+8	buffer.memory: increase if there are a lot of partitions (default 33554432)			
+![image](https://user-images.githubusercontent.com/61533898/127114327-333846de-e371-42d4-b1bf-c0f4507c8fe9.png)
 
 
 
